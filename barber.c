@@ -76,14 +76,21 @@ void *customerf(void *arg)
 
     sem_wait(&seat_sem);
     // if no free chair, leave
+    if(seats_free < 1)
+    {
+        sem_post(&seat_sem);
+        customers_waiting++;
+        printf("Customer %d leaves.\n", *id);
+    }
     
     // free chair available
-    if(seats_free >= CHAIR_CAPACITY)
-    {
+    if(seats_free >= 1 && seats_free <= CHAIR_CAPACITY)
+    {   
+         // START TIMECOUNT
         seats_free--;
         printf("Customer %d waits.\n", *id);
         printf("Seats free: %d\n", seats_free);
-        // START TIMECOUNT
+       
         // if barber is sleeping, wake him up and get a haircut
         sem_post(&customer_sem); 
         // if barber's working, have a seat and wait
@@ -91,12 +98,7 @@ void *customerf(void *arg)
         sem_wait(&barber_sem); 
         // END TIMECOUNT
     }
-    else
-    {
-        sem_post(&seat_sem);
-        customers_waiting++;
-        printf("Customer %d leaves.\n", *id);
-    }
+    
     pthread_exit(NULL);
 }
 
