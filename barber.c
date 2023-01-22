@@ -1,4 +1,4 @@
-/* 
+/*
     METADATA
     - time unit: millisecond (ms)
 */
@@ -17,7 +17,6 @@
 #define MAX_CUSTOMERS 27
 #define CHAIR_CAPACITY 5 // N chairs
 #define TRUE 1
-#define FALSE 0
 
 /* GLOBAL VARIABLES */
 /* INPUT */
@@ -29,7 +28,7 @@ int haircut_repetition;
 /* PROPERTIES */
 int seats_free = CHAIR_CAPACITY;
 int customers_waiting;
-int haircut_count[MAX_CUSTOMERS];
+int haircut_counts[MAX_CUSTOMERS];
 double waiting_times[MAX_CUSTOMERS];
 
 /* SYNCHRONOZATION */
@@ -39,13 +38,14 @@ sem_t barber_sem;
 sem_t customer_sem;
 sem_t seat_sem;
 
-
 void *barberf(void *arg)
-{   
-    int got_haircut = 0; 
-
+{
+    int got_haircut = 0;
+  
     while (got_haircut < (num_customer - customers_waiting))
-    {
+    {   
+        int i;
+
         // wait for a customer
         sem_wait(&customer_sem);
         // no free chairs, customer leaves
@@ -62,10 +62,13 @@ void *barberf(void *arg)
         // barber cannot give a haircut to another customer
         pthread_mutex_lock(&mutex);
         // customer gets a haircut
-        usleep(max_haircut_duration * 1000);
+        while (haircut_counts[i] < haircut_repetition)
+        {
+           usleep(max_haircut_duration * 1000);
+           haircut_counts[i]++;
+        }
         // free the barber
         pthread_mutex_unlock(&mutex);
-        printf("Customer got a haircut\n");
         got_haircut++;
     }
 }
@@ -73,11 +76,11 @@ void *barberf(void *arg)
 void *customerf(void *arg)
 {
     int *id = (int *)arg;
-    int i;
+    // customer i will have the haircut haircut_repetition times
 
     sem_wait(&seat_sem);
     // if no free chair, leave
-    if(seats_free < 1)
+    if (seats_free < 1)
     {
         sem_post(&seat_sem);
         customers_waiting++;
@@ -85,26 +88,26 @@ void *customerf(void *arg)
     }
 
     // free chair available
-    if(seats_free >= 1 && seats_free <= CHAIR_CAPACITY)
-    {   
+    if (seats_free >= 1 && seats_free <= CHAIR_CAPACITY)
+    {
         struct timespec begin, end; // START TICKING
         clock_gettime(CLOCK_REALTIME, &begin);
         seats_free--;
         printf("Customer %d waits.\n", *id);
         printf("Seats free: %d\n", seats_free);
-       
+
         // if barber is sleeping, wake him up and get a haircut
-        sem_post(&customer_sem); 
+        sem_post(&customer_sem);
         // if barber's working, have a seat and wait
-        sem_post(&seat_sem); 
-        sem_wait(&barber_sem); 
-        clock_gettime(CLOCK_REALTIME, &end);    /*STOP TICKING HUNGRY TIME*/
+        sem_post(&seat_sem);
+        sem_wait(&barber_sem);
+        clock_gettime(CLOCK_REALTIME, &end); /*STOP TICKING HUNGRY TIME*/
         long seconds = end.tv_sec - begin.tv_sec;
         long nanoseconds = end.tv_nsec - begin.tv_nsec;
-        double elapsed_ms= (seconds + nanoseconds*1e-9) * 1000;
+        double elapsed_ms = (seconds + nanoseconds * 1e-9) * 1000;
         waiting_times[*id] = elapsed_ms;
     }
-    
+    haircut_counts[*id]++;
     pthread_exit(NULL);
 }
 
@@ -115,7 +118,6 @@ int main(int argc, int *argv[])
     max_haircut_duration = atoi(argv[3]);
     haircut_repetition = atoi(argv[4]);
 
-    
     /* DEBUG */
     printf("******************************\n");
     printf("num_customer: %d\n", num_customer);
@@ -126,19 +128,19 @@ int main(int argc, int *argv[])
     /* DEBUG */
 
     int i;
-    int customers[num_customer]; 
+    int customers[num_customer];
     pthread_t customer_tids[num_customer]; /* customers thread */
-    pthread_t barber_tid; /* barber thread */
+    pthread_t barber_tid;                  /* barber thread */
 
     // Initialize synchronization variables
     pthread_mutex_init(&mutex, NULL);
     sem_init(&barber_sem, 0, 0); // barber sleeping
-    sem_init(&customer_sem, 0, 0); 
+    sem_init(&customer_sem, 0, 0);
     sem_init(&seat_sem, 0, 1);
-    
+
     // Initialize barber
     barber_tid = pthread_create(&barber_tid, NULL, barberf, NULL);
-    
+
     // Initialize customers
     for (i = 0; i < num_customer; i++)
     {
@@ -147,7 +149,6 @@ int main(int argc, int *argv[])
         printf("Initialize customer %d\n", i);
         usleep(max_arrival_time * 1000);
     }
-
     // Wait for barber to finish
     pthread_join(barber_tid, NULL);
 
@@ -157,11 +158,11 @@ int main(int argc, int *argv[])
         pthread_join(customer_tids[i], NULL);
     }
 
-    // Print pesults 
+    // Print pesults
     for (i = 0; i < num_customer; i++)
     {
-        printf("Customer %d waited %f ms\n", i, waiting_times[i]);
+        printf("Customer %d waited %f ms for %d haircuts \n", i, waiting_times[i], haircut_counts[i]);
     }
-    
+
     exit(EXIT_SUCCESS);
 }
