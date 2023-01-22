@@ -30,6 +30,7 @@ int haircut_repetition;
 int seats_free = CHAIR_CAPACITY;
 int customers_waiting;
 int haircut_count[MAX_CUSTOMERS];
+double waiting_times[MAX_CUSTOMERS];
 
 /* SYNCHRONOZATION */
 pthread_t barber_t;
@@ -82,11 +83,12 @@ void *customerf(void *arg)
         customers_waiting++;
         printf("Customer %d leaves.\n", *id);
     }
-    
+
     // free chair available
     if(seats_free >= 1 && seats_free <= CHAIR_CAPACITY)
     {   
-         // START TIMECOUNT
+        struct timespec begin, end; // START TICKING
+        clock_gettime(CLOCK_REALTIME, &begin);
         seats_free--;
         printf("Customer %d waits.\n", *id);
         printf("Seats free: %d\n", seats_free);
@@ -96,7 +98,11 @@ void *customerf(void *arg)
         // if barber's working, have a seat and wait
         sem_post(&seat_sem); 
         sem_wait(&barber_sem); 
-        // END TIMECOUNT
+        clock_gettime(CLOCK_REALTIME, &end);    /*STOP TICKING HUNGRY TIME*/
+        long seconds = end.tv_sec - begin.tv_sec;
+        long nanoseconds = end.tv_nsec - begin.tv_nsec;
+        double elapsed_ms= (seconds + nanoseconds*1e-9) * 1000;
+        waiting_times[*id] = elapsed_ms;
     }
     
     pthread_exit(NULL);
@@ -152,6 +158,10 @@ int main(int argc, int *argv[])
     }
 
     // Print pesults 
-
+    for (i = 0; i < num_customer; i++)
+    {
+        printf("Customer %d waited %f ms\n", i, waiting_times[i]);
+    }
+    
     exit(EXIT_SUCCESS);
 }
