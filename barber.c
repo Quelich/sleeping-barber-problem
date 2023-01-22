@@ -161,7 +161,7 @@ int main(int argc, int *argv[])
     // Print pesults
     for (i = 0; i < num_customer; i++)
     {
-        printf("Customer %d waited %f ms for %d haircuts \n", i, waiting_times[i], haircut_counts[i]);
+        printf("Customer %d waited %f ms\n", i, waiting_times[i]);
     }
 
     exit(EXIT_SUCCESS);
