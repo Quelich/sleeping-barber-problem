@@ -118,15 +118,6 @@ int main(int argc, int *argv[])
     max_haircut_duration = atoi(argv[3]);
     haircut_repetition = atoi(argv[4]);
 
-    /* DEBUG */
-    printf("******************************\n");
-    printf("num_customer: %d\n", num_customer);
-    printf("max_arrival_time: %d\n", max_arrival_time);
-    printf("max_haircut_duration: %d\n", max_haircut_duration);
-    printf("haircut_repetition: %d\n", haircut_repetition);
-    printf("******************************\n");
-    /* DEBUG */
-
     int i;
     int customers[num_customer];
     pthread_t customer_tids[num_customer]; /* customers thread */
